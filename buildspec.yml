@@ -1,0 +1,14 @@
+version: 0.1 
+phases: 
+  build:
+    commands:
+      - GOARCH=amd64 GOOS=linux go build main.go
+  post_build: 
+    commands: 
+      - aws cloudformation package --template-file cfTemplate.yaml --s3-bucket gittrendlambda --s3-prefix main --output-template-file .template.yaml 
+artifacts: 
+  type: zip 
+  files: 
+    - cfTemplate.yaml 
+    - .template.yaml
+    - main

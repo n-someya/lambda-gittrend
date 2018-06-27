@@ -11,6 +11,7 @@ phases:
       - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
   build:
     commands:
+      - cd "/go/src/${SRC_DIR}"
       - GOARCH=amd64 GOOS=linux go build main.go
   post_build: 
     commands: 

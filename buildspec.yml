@@ -13,6 +13,7 @@ phases:
   pre_build:
     commands:
       - export GOPATH=/go
+      - cd "/go/src/${SRC_DIR}" && pwd
       - cd "/go/src/${SRC_DIR}" && dep ensure
   build:
     commands:

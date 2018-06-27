@@ -10,6 +10,7 @@ phases:
       - go get -u github.com/golang/dep/cmd/dep
   pre_build:
     commands:
+      - mkdir -p "/go/src/${SRC_DIR}"
       - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}"
       - export GOPATH=/go
       - cd "/go/src/${SRC_DIR}" && dep ensure

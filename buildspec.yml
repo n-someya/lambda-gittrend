@@ -1,18 +1,20 @@
-version: 0.1 
+version: 0.2
 env:
   variables:
-        SRC_DIR: "github.com/n-someya/lambda-gittrend"
+    SRC_DIR: "github.com/n-someya/lambda-gittrend"
 phases: 
   install:
     commands:
       # AWS Codebuild Go images use /go for the $GOPATH so let's copy our 
       # application source code into that directory structure.
+      - echo "/go/src/${SRC_DIR}" 
       - rm -rf "/go/src/${SRC_DIR}" 
       - cp -r "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
       - go get -u github.com/golang/dep/cmd/dep
   pre_build:
     commands:
       - env
+      - echo "/go/src/${SRC_DIR}" 
       - ls -al "/go/src/${SRC_DIR}" 
       - cd "/go/src/${SRC_DIR}" && dep ensure
   build:

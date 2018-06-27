@@ -12,6 +12,8 @@ phases:
       - go get -u github.com/golang/dep/cmd/dep
   pre_build:
     commands:
+      - env
+      - ls -al "/go/src/${SRC_DIR}" 
       - cd "/go/src/${SRC_DIR}" && dep ensure
   build:
     commands:

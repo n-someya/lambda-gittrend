@@ -1,14 +1,29 @@
 version: 0.1 
+env:
+  variables:
+        SRC_DIR: "github.com/n-someya/lambda-gittrend"
 phases: 
+  install:
+    commands:
+      # AWS Codebuild Go images use /go for the $GOPATH so let's copy our 
+      # application source code into that directory structure.
+      - mkdir -p "/go/src/$(dirname ${SRC_DIR})"
+      - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
+      - go get -u github.com/golang/dep/cmd/dep
+  pre-build:
+    commands:
+      - cd "/go/src/${SRC_DIR}"
+      - dep ensure
+
   build:
     commands:
       - GOARCH=amd64 GOOS=linux go build main.go
   post_build: 
     commands: 
-      - aws cloudformation package --template-file cfTemplate.yaml --s3-bucket gittrendlambda --s3-prefix main --output-template-file .template.yaml 
+      - aws cloudformation package --template-file cfTemplate.yaml --s3-bucket gittrendlambda --s3-prefix main --output-template-file samTemplate.yaml
 artifacts: 
   type: zip 
   files: 
     - cfTemplate.yaml 
-    - .template.yaml
+    - samTemplate.yaml
     - main

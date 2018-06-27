@@ -13,7 +13,7 @@ phases:
   pre_build:
     commands:
       - cd "/go/src/${SRC_DIR}"
-      - ls --al
+      - ls -al
       - pwd
       - dep ensure
   build:

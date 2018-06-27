@@ -7,14 +7,8 @@ phases:
     commands:
       # AWS Codebuild Go images use /go for the $GOPATH so let's copy our 
       # application source code into that directory structure.
-      - mkdir -p "/go/src/$(dirname ${SRC_DIR})"
+      - mkdir -p "/go/src/${SRC_DIR}"
       - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
-      - go get -u github.com/golang/dep/cmd/dep
-  pre_build:
-    commands:
-      - cd "/go/src/${SRC_DIR}"
-      - dep ensure
-
   build:
     commands:
       - GOARCH=amd64 GOOS=linux go build main.go

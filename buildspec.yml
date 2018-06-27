@@ -7,12 +7,18 @@ phases:
     commands:
       # AWS Codebuild Go images use /go for the $GOPATH so let's copy our 
       # application source code into that directory structure.
-      - mkdir -p "/go/src/${SRC_DIR}"
-      - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
-  build:
+      - rm -rf "/go/src/${SRC_DIR}" 
+      - cp -r "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}" 
+      - go get -u github.com/golang/dep/cmd/dep
+  pre_build:
     commands:
       - cd "/go/src/${SRC_DIR}"
-      - GOARCH=amd64 GOOS=linux go build main.go
+      - ls --al
+      - pwd
+      - dep ensure
+  build:
+    commands:
+     - GOARCH=amd64 GOOS=linux go build main.go
   post_build: 
     commands: 
       - aws cloudformation package --template-file cfTemplate.yaml --s3-bucket gittrendlambda --s3-prefix main --output-template-file samTemplate.yaml

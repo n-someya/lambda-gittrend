@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Transform: 'AWS::Serverless-2016-10-31'
 Resources:
-  App:
+  GitTrendLambda:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: main
@@ -11,4 +11,4 @@ Resources:
       MemorySize: 128
       Role: >-
         arn:aws:iam::848145842635:role/lambda_basic_execution
-      Timeout: 3
+      Timeout: 90

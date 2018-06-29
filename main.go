@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,12 +24,35 @@ const GcpProjectID string = "GCP_PROJECT_ID"
 // GoogleApplicationCredentials is env var name which gcp service account key json file path
 const GoogleApplicationCredentials string = "GOOGLE_APPLICATION_CREDENTIALS"
 
+// SlackURL is env var name for slack incomming hook
+const SlackURL string = "SLACK_URL"
+
+// SlackAttachment is attachemnts of incoming webhook payload
+type SlackAttachment struct {
+	PreText   string `json:"pretext"`
+	Title     string `json:"title"`
+	TitleLink string `json:"title_link"`
+	Text      string `json:"text"`
+	Color     string `json:"color"`
+}
+
+// SlackPayload is incoming webhook payload
+type SlackPayload struct {
+	Text        string            `json:"text"`
+	Username    string            `json:"username"`
+	IconEmoji   string            `json:"icon_emoji"`
+	IconURL     string            `json:"icon_url"`
+	Channel     string            `json:"channel"`
+	Attachments []SlackAttachment `json:"attachments"`
+}
+
 // Repo : Git repogitry info
 type Repo struct {
 	Title       string
 	URLStr      string
 	Description string
 	Count       int
+	Language    string
 }
 
 func getGcpJSONKey(credentialFilename string) (err error) {
@@ -48,6 +73,7 @@ func getGcpJSONKey(credentialFilename string) (err error) {
 		if err != nil {
 			return fmt.Errorf("err: %v", err)
 		}
+		defer f.Close()
 		_, err = f.WriteString(*result.SecretString)
 		if err != nil {
 			return fmt.Errorf("err: %v", err)
@@ -90,22 +116,22 @@ func scrapteGithubTrending(language string) (repos []Repo, err error) {
 		//		fmt.Println("title: ", title)
 		//		fmt.Println("URL: ", url)
 		//		fmt.Println("description: ", description)
-		repos = append(repos, Repo{Title: title, URLStr: url, Description: description, Count: 0})
+		repos = append(repos, Repo{Title: title, URLStr: url, Description: description, Count: 0, Language: language})
 	})
 
 	return repos, nil
 }
 
-func registerFirstAppearedRepo(repos *[]Repo) (err error) {
+func registerFirstAppearedRepo(repos *[]Repo) (newRepos *[]Repo, err error) {
 	ctx := context.Background()
 	projectID := os.Getenv(GcpProjectID)
-	fmt.Println("GCP PrjID =", projectID)
+	newAppearedRepos := make([]Repo, 0)
 
 	// Creates a client.
 	client, err := datastore.NewClient(ctx, projectID)
 	if err != nil {
 		log.Printf("Failed to create client: %v", err)
-		return err
+		return nil, err
 	}
 
 	// Sets the kind for the new entity.
@@ -116,20 +142,68 @@ func registerFirstAppearedRepo(repos *[]Repo) (err error) {
 		existsRepo, err := client.Count(ctx, query)
 		if err != nil {
 			log.Printf("Failed to query repo: %v", err)
-			return err
+			return nil, err
 		}
 
 		// GitRepo whoese existsRepo have 0 is firstly appeared trend repoditry.
 		if existsRepo == 0 {
-			fmt.Println(repo.Title, " is ", existsRepo)
+			log.Println(repo.Title, " is ", existsRepo)
 			key := datastore.NameKey(kind, repo.Title, nil)
 			if _, err = client.Put(ctx, key, &repo); err != nil {
 				log.Printf("Failed to save repo: %v", err)
-				return err
+				return nil, err
 			}
+			newAppearedRepos = append(newAppearedRepos, repo)
 		}
 	}
 
+	return &newAppearedRepos, nil
+}
+
+func sendNewAppearedRepos(repos *[]Repo) (err error) {
+	// get slack url from env var
+	slackURL := os.Getenv(SlackURL)
+	errCount := 0
+	for _, repo := range *repos {
+		if err := sendNewAppearedRepo(slackURL, repo); err != nil {
+			log.Printf("Failed to send %v to %s. Because of %v", repo, slackURL, err)
+			errCount++
+			continue
+		}
+	}
+	if errCount != 0 {
+		return fmt.Errorf("Failed to send repo to slack")
+	}
+	return nil
+}
+
+func sendNewAppearedRepo(slackURL string, repo Repo) (err error) {
+	params, err := json.Marshal(
+		SlackPayload{
+			IconURL: "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
+			Attachments: []SlackAttachment{
+				SlackAttachment{
+					PreText:   repo.Language,
+					Title:     repo.Title,
+					TitleLink: repo.URLStr,
+					Text:      repo.Description,
+				},
+			},
+		})
+	if err != nil {
+		log.Printf("Can not parse json: %v", err)
+		return err
+	}
+	resp, err := http.Post(
+		slackURL,
+		"application/json",
+		bytes.NewReader(params),
+	)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	defer resp.Body.Close()
 	return nil
 }
 
@@ -140,15 +214,17 @@ func HandleRequest(awsctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// when this func ends, removeGcpJSONKey must be called.
+	defer removeGcpJSONKey(credentialFilename)
 	repos, err := scrapteGithubTrending("python")
 	if err != nil {
 		return false, err
 	}
-	err = registerFirstAppearedRepo(&repos)
+	newRepos, err := registerFirstAppearedRepo(&repos)
 	if err != nil {
 		return false, err
 	}
-	err = removeGcpJSONKey(credentialFilename)
+	err = sendNewAppearedRepos(newRepos)
 	if err != nil {
 		return false, err
 	}

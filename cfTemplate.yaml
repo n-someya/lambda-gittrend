@@ -12,3 +12,8 @@ Resources:
       Role: >-
         arn:aws:iam::848145842635:role/lambda_basic_execution
       Timeout: 90
+      Events:
+        CheckWebsiteScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)

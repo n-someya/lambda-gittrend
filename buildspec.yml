@@ -14,6 +14,7 @@ phases:
       - ln -s "${CODEBUILD_SRC_DIR}" "/go/src/${SRC_DIR}"
       - export GOPATH=/go
       - cd "/go/src/${SRC_DIR}" && dep ensure
+      - cd "/go/src/${SRC_DIR}" && go test -v .
   build:
     commands:
      - cd "/go/src/${SRC_DIR}" && GOARCH=amd64 GOOS=linux go build main.go

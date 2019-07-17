@@ -56,3 +56,13 @@ func TestHandleRequest(t *testing.T) {
 		t.Errorf("Failed to . %v", err)
 	}
 }
+
+func TestScrapeGithubTrend(t *testing.T) {
+	repos, err := scrapteGithubTrending("python")
+	if err != nil {
+		t.Fail()
+	}
+	if repos == nil {
+		t.Fail()
+	}
+}

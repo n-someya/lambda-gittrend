@@ -90,7 +90,7 @@ func removeGcpJSONKey(credentialFilename string) (err error) {
 	return os.Remove(credentialFilename)
 }
 func scrapteGithubTrending(language string) (repos []Repo, err error) {
-	resp, err := http.Get("https://github.com/trending?l=" + language)
+	resp, err := http.Get("https://github.com/trending/" + language + "?since=daily")
 	if err != nil {
 		log.Printf("Failed to fetch github repo")
 		return repos, err
@@ -107,11 +107,11 @@ func scrapteGithubTrending(language string) (repos []Repo, err error) {
 		return repos, err
 	}
 
-	doc.Find("ol.repo-list li").Each(func(i int, s *goquery.Selection) {
-		title := strings.TrimSpace(s.Find("h3 a").Text())
+	doc.Find("article.Box-row").Each(func(i int, s *goquery.Selection) {
+		title := strings.TrimSpace(s.Find("h1 a").Text())
 		description := s.Find("p.col-9").Text()
 		description = strings.TrimSpace(description)
-		url, _ := s.Find("h3 a").Attr("href")
+		url, _ := s.Find("h1 a").Attr("href")
 		url = "https://github.com" + url
 		//		fmt.Println("title: ", title)
 		//		fmt.Println("URL: ", url)
